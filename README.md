@@ -1,2 +1,1 @@
-# go-news
-Go News Project
+# go-db-practice-gonews

@@ -65,8 +65,23 @@ func (s *Store) AddPost(p storage.Post) error {
 	}
 	return err
 }
-func (s *Store) UpdatePost(storage.Post) error {
-	return nil
+func (s *Store) UpdatePost(p storage.Post) error {
+	collection := s.db.Database(dbName).Collection(collectionName)
+	filter := bson.D{{Key: "ID", Value: p.ID}}
+	update := bson.D{{Key: "$set",
+		Value: bson.D{
+			{Key: "Title", Value: p.Title},
+			{Key: "Content", Value: p.Content},
+			{Key: "AuthorID", Value: p.AuthorID},
+			{Key: "AuthorName", Value: p.AuthorName},
+			{Key: "PublishedAt", Value: p.PublishedAt},
+		},
+	}}
+	_, err := collection.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return err
+	}
+	return err
 }
 func (s *Store) DeletePost(storage.Post) error {
 	return nil

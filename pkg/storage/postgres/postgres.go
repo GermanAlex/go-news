@@ -121,8 +121,24 @@ func (s *Store) UpdatePost(p storage.Post) error {
 	return err
 
 }
-func (s *Store) DeletePost(storage.Post) error {
-	return nil
+func (s *Store) DeletePost(p storage.Post) error {
+	tx, err := s.db.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	commandTag, err := tx.Exec(context.Background(), `
+		DELETE FROM posts
+		where id = $1;
+		`,
+		p.ID)
+
+	if commandTag.RowsAffected() != 1 {
+		return errors.New("no row found to delete")
+	}
+
+	return err
 }
 
 func (s *Store) addAuthor(p storage.Post) error {

@@ -3,6 +3,7 @@ package postgres
 import (
 	"GoNews/pkg/storage"
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -92,8 +93,33 @@ func (s *Store) AddPost(p storage.Post) error {
 
 	return err
 }
-func (s *Store) UpdatePost(storage.Post) error {
-	return nil
+func (s *Store) UpdatePost(p storage.Post) error {
+	tx, err := s.db.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	commandTag, err := tx.Exec(context.Background(), `
+		UPDATE posts SET
+			author_id = $1,
+			title = $2,
+			content = $3,
+			published_at = $4
+		WHERE id = $5;
+		`,
+		p.AuthorID,
+		p.Title,
+		p.Content,
+		p.PublishedAt,
+		p.ID)
+
+	if commandTag.RowsAffected() != 1 {
+		return errors.New("no row found to delete")
+	}
+
+	return err
+
 }
 func (s *Store) DeletePost(storage.Post) error {
 	return nil

@@ -4,6 +4,7 @@ import (
 	"GoNews/pkg/storage"
 	"context"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -12,6 +13,11 @@ import (
 type Store struct {
 	db *mongo.Client
 }
+
+const (
+	dbName         = "go-news"
+	collectionName = "posts"
+)
 
 // Конструктор объекта хранилища.
 func New(connectionString string) (*Store, error) {
@@ -32,7 +38,23 @@ func New(connectionString string) (*Store, error) {
 }
 
 func (s *Store) Posts() ([]storage.Post, error) {
-	return posts, nil
+	collection := s.db.Database(dbName).Collection(collectionName)
+	filter := bson.D{}
+	cur, err := collection.Find(context.Background(), filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(context.Background())
+	var posts []storage.Post
+	for cur.Next(context.Background()) {
+		var p storage.Post
+		err := cur.Decode(&p)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, p)
+	}
+	return posts, cur.Err()
 }
 
 func (s *Store) AddPost(storage.Post) error {

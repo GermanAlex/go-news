@@ -4,6 +4,7 @@ import (
 	"GoNews/pkg/storage"
 	"context"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -63,14 +64,68 @@ func (s *Store) Posts() ([]storage.Post, error) {
 	return posts, rows.Err()
 }
 
-func (s *Store) AddPost(storage.Post) error {
-	return nil
+func (s *Store) AddPost(p storage.Post) error {
+	var id int
+	tx, err := s.db.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	err = s.addAuthor(p)
+
+	if err != nil {
+		return err
+	}
+
+	err = tx.QueryRow(context.Background(), `
+		INSERT INTO posts (id, author_id, title, content, created_at, published_at)
+		VALUES ($1, $2, $3, $4, $5, $6);
+		`,
+		p.ID,
+		p.AuthorID,
+		p.Title,
+		p.Content,
+		p.CreatedAt,
+		p.PublishedAt,
+	).Scan(&id)
+
+	return err
 }
 func (s *Store) UpdatePost(storage.Post) error {
 	return nil
 }
 func (s *Store) DeletePost(storage.Post) error {
 	return nil
+}
+
+func (s *Store) addAuthor(p storage.Post) error {
+	var id int
+	tx, err := s.db.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	err = tx.QueryRow(context.Background(), `
+		SELECT id
+		FROM authors
+		WHERE id = $1
+		`,
+		p.AuthorID,
+	).Scan(&id)
+
+	if err == pgx.ErrNoRows {
+		err = tx.QueryRow(context.Background(), `
+			INSERT INTO authors (id, name)
+			VALUES ($1, $2);
+			`,
+			p.AuthorID,
+			p.AuthorName,
+		).Scan(&id)
+	}
+
+	return err
 }
 
 /*var posts = []storage.Post{

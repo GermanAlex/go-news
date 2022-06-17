@@ -83,6 +83,12 @@ func (s *Store) UpdatePost(p storage.Post) error {
 	}
 	return err
 }
-func (s *Store) DeletePost(storage.Post) error {
-	return nil
+func (s *Store) DeletePost(p storage.Post) error {
+	collection := s.db.Database(dbName).Collection(collectionName)
+	filter := bson.D{{Key: "ID", Value: p.ID}}
+	_, err := collection.DeleteOne(context.Background(), filter)
+	if err != nil {
+		return err
+	}
+	return err
 }
